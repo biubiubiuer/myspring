@@ -25,13 +25,13 @@ public class ZhouyuApplicationContext {
         for (String beanName : beanDefinitionMap.keySet()) {
             BeanDefinition beanDefinition = beanDefinitionMap.get(beanName);
             if (beanDefinition.getScope().equals(SINGLETON)) {
-                Object bean = createBean(beanDefinition);  // 单例Bean
+                Object bean = createBean(beanName, beanDefinition);  // 单例Bean
                 singletonObjects.put(beanName, bean);
             }
         }
     }
     
-    private Object createBean(BeanDefinition beanDefinition) {
+    private Object createBean(String beanName, BeanDefinition beanDefinition) {
         Class clazz = beanDefinition.getClazz();
         try {
             Object instance = clazz.getDeclaredConstructor().newInstance();
@@ -46,6 +46,10 @@ public class ZhouyuApplicationContext {
                     declaredField.setAccessible(true);
                     declaredField.set(instance, bean);
                 }
+            }
+            
+            if (instance instanceof BeanNameAware) {
+                ((BeanNameAware) instance).setBeanName(beanName);
             }
             
             return instance;
@@ -123,7 +127,7 @@ public class ZhouyuApplicationContext {
                 return o;
             } else {
                 // 创建Bean对象?
-                Object bean = createBean(beanDefinition);
+                Object bean = createBean(beanName, beanDefinition);
                 return bean;
             }
         } else {
