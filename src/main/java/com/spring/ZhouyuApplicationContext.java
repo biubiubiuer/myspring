@@ -1,6 +1,7 @@
 package com.spring;
 
 import java.io.File;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.util.concurrent.ConcurrentHashMap;
@@ -34,6 +35,18 @@ public class ZhouyuApplicationContext {
         Class clazz = beanDefinition.getClazz();
         try {
             Object instance = clazz.getDeclaredConstructor().newInstance();
+            
+            // 依赖注入
+            for (Field declaredField : clazz.getDeclaredFields()) {
+                if (declaredField.isAnnotationPresent(Autowired.class)) {
+                    Object bean = getBean(declaredField.getName());
+                    if (bean == null) {
+                        throw new NullPointerException("Bean definition is null");
+                    }
+                    declaredField.setAccessible(true);
+                    declaredField.set(instance, bean);
+                }
+            }
             
             return instance;
         } catch (InstantiationException e) {
