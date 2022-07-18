@@ -4,6 +4,8 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ZhouyuApplicationContext {
@@ -14,7 +16,8 @@ public class ZhouyuApplicationContext {
     
     private ConcurrentHashMap<String, Object> singletonObjects = new ConcurrentHashMap<>();  // 单例池
     private ConcurrentHashMap<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>();
-
+    private List<BeanPostProcessor> beanPostProcessorList = new ArrayList<>();
+    
     public ZhouyuApplicationContext(Class configClass) {
         this.configClass = configClass;
 
@@ -52,6 +55,10 @@ public class ZhouyuApplicationContext {
             if (instance instanceof BeanNameAware) {
                 ((BeanNameAware) instance).setBeanName(beanName);
             }
+
+            for (BeanPostProcessor beanPostProcessor : beanPostProcessorList) {
+                instance = beanPostProcessor.postProcessBeforeInitialization(instance, beanName);
+            }
             
             // 初始化
             if (instance instanceof InitializingBean) {
@@ -61,6 +68,12 @@ public class ZhouyuApplicationContext {
                     e.printStackTrace();
                 }
             }
+
+            for (BeanPostProcessor beanPostProcessor : beanPostProcessorList) {
+                instance = beanPostProcessor.postProcessAfterInitialization(instance, beanName);
+            }
+            
+            // BeanPostProcessor
             
             return instance;
         } catch (InstantiationException e) {
@@ -106,6 +119,11 @@ public class ZhouyuApplicationContext {
                             // ....? Class-->bean ?  No
                             // 解析类--->BeanDefinition, 判断当前bean是单例bean, 还是prototype的bean
 
+                            if (BeanPostProcessor.class.isAssignableFrom(clazz)) {
+                                BeanPostProcessor instance = (BeanPostProcessor) clazz.getDeclaredConstructor().newInstance();
+                                beanPostProcessorList.add(instance);
+                            }
+
                             Component componentAnnotation = clazz.getDeclaredAnnotation(Component.class);
                             String beanName = componentAnnotation.value();
 
@@ -122,6 +140,14 @@ public class ZhouyuApplicationContext {
                             
                         }
                     } catch (ClassNotFoundException e) {
+                        e.printStackTrace();
+                    } catch (InvocationTargetException e) {
+                        e.printStackTrace();
+                    } catch (InstantiationException e) {
+                        e.printStackTrace();
+                    } catch (IllegalAccessException e) {
+                        e.printStackTrace();
+                    } catch (NoSuchMethodException e) {
                         e.printStackTrace();
                     }
                 }
